@@ -1,0 +1,118 @@
+#include <QTRSensors.h>
+#define NUM_SENSORS             8  
+#define NUM_SAMPLES_PER_SENSOR  4  
+#define EMITTER_PIN             2 
+
+// sensors 0 through 7 are connected to digital pins 3 through 10, respectively
+QTRSensorsAnalog qtra((unsigned char[]) {0, 1, 2, 3, 4, 5, 6, 7}, 
+  NUM_SENSORS, NUM_SAMPLES_PER_SENSOR, EMITTER_PIN);
+  
+unsigned int sensorValues[NUM_SENSORS];
+unsigned int position=0;
+int cruzero = 150;   //////////     V   /////
+int pwma=6;
+int pwmb=11;
+int P=0;
+int I=0;
+int D=0;
+int LAST=0;
+float vel;
+
+void setup()
+{
+
+  Serial.begin(9600);    
+  pinMode(pwma,OUTPUT);
+  pinMode(pwmb,OUTPUT);
+  pinMode(5,OUTPUT);
+  pinMode(10,OUTPUT);
+  delay(1500);
+
+  
+for (int j = 0; j < 40; j++) {                                 
+                    
+  qtra.calibrate();       
+
+ }
+ 
+ 
+ digitalWrite(18, LOW);             
+ analogWrite(pwma,0);
+ analogWrite(pwmb,0);
+}
+
+// Ciclo
+
+void loop()
+{
+
+for(;;){ 
+
+qtra.read(sensorValues);
+position = qtra.readLine(sensorValues, QTR_EMITTERS_OFF, 0);
+Serial.println(position);                                            
+Serial.print("\t");
+                                                                                        
+P = ((position)-(3500)); /// ERROR
+ 
+Serial.println(P);
+Serial.print("\t");
+ 
+/////FRENOS////
+if(P<-3500){
+  
+  analogWrite(pwma,120); // VELOCIDAD PARA EL MOTOR DERECHO
+  analogWrite(10,180); //  VELOCIDAD PARA EL MOTOR IZQUIERDO
+
+
+} else if (P>3500){
+  
+ analogWrite(5,135); // VELOCIDAD PARA EL MOTOR DERECHO
+ analogWrite(pwmb,90); //  VELOCIDAD PARA EL MOTOR IZQUIERDO
+
+
+}
+/////////////////////////
+  
+ else{   
+   D= (P - LAST); /// ERROR MENOS EL ERROR ANTERIOR , DERIVATIVO
+   I=(P+ LAST); //INTEGRAL
+  
+   
+//vel=(P*0.025)+(D*0.095)+(I*0); // PID
+   
+vel=(P*0.055)+(D*0.095)+(I*0.01);// para velocidad 120//////estaba en 0.0925
+
+//vel=(P*0.0428)+(D*0.085)+(I*0); //para velocidad 80 kd=0.06
+
+///CRUZERO =VELOCIDAD PUNTA , V
+
+    if(vel >cruzero)
+    { 
+      vel=cruzero;
+    }
+    if(vel<-cruzero) 
+    {
+      vel=-cruzero;
+    }
+
+  analogWrite(pwma,cruzero-vel); // VELOCIDAD PARA EL MOTOR DERECHO
+  analogWrite(pwmb,cruzero+vel); //  VELOCIDAD PARA EL MOTOR IZQUIERDO
+
+  Serial.println(cruzero-vel);
+  Serial.print("\t");
+  Serial.println(cruzero+vel);
+  Serial.print("\t");
+
+
+
+ 
+LAST=P;
+}
+  
+}////BUCLE INFINITO
+///PRESIONO BOTON
+}///FIN DEL LOOP
+
+
+ 
